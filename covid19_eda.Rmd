@@ -1,0 +1,76 @@
+---
+title: "Covid19_EDA"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    code_folding: hide
+    toc: TRUE
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r libraries, echo = TRUE}
+library(tidyverse)
+library(lubridate)
+library(janitor)
+theme_set(theme_bw())
+```
+
+```{r sources}
+ecda_url <- 'https://opendata.ecdc.europa.eu/covid19/casedistribution/csv'
+```
+
+
+# Load data
+
+## European Centre for Disease Prevention and Control
+
+```{r data_load}
+ecda_df <- janitor::clean_names(readr::read_csv(ecda_url)) %>%
+  mutate(date = lubridate::dmy(date_rep)) %>% 
+  group_by(geo_id) %>%
+  mutate(total_deaths = sum(deaths)) %>%
+  mutate(total_cases = sum(cases)) %>% 
+  ungroup()
+glimpse(ecda_df)
+```
+
+# plots
+
+```{r}
+country_select <- ecda_df %>% select(total_cases, total_deaths, geo_id) %>% unique() %>%
+  arrange(desc(total_cases)) %>% head(10)
+ecda_small <- ecda_df %>% filter(geo_id %in% country_select$geo_id)
+```
+
+## Cases
+
+```{r cases_plot}
+plt <- ecda_small %>%
+  group_by(countries_and_territories) %>% 
+  ggplot(aes(x=date, y=cases)) +
+  geom_line(aes(group=countries_and_territories, colour=geo_id)) +
+  scale_y_log10()
+
+plt
+
+plt + facet_wrap(~geo_id)
+```
+
+
+## Deaths
+
+```{r death_plots}
+plt2 <- plt %+% aes(y=deaths)
+
+plt2
+
+plt2 + facet_wrap(~geo_id)
+
+```
+
+
